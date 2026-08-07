@@ -34,6 +34,8 @@ app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' })); // Allow 
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
       'https://certificate.spheronixtechnology.com',
       'https://company-certificate-frontend.onrender.com'
     ];
