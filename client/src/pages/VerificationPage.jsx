@@ -15,8 +15,12 @@ export default function VerificationPage() {
       try {
         const res = await api.get(`/verify/${id}`);
         setData(res.data);
-      } catch {
-        setError('Certificate Not Found');
+      } catch (err) {
+        if (err.response && err.response.status === 404) {
+          setError('Certificate Not Found');
+        } else {
+          setError('Network Error: Could not connect to verification server');
+        }
       } finally {
         setLoading(false);
       }
@@ -40,8 +44,8 @@ export default function VerificationPage() {
           <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
             <XCircle className="text-red-500 w-10 h-10" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Certificate Not Found</h2>
-          <p className="text-slate-500 dark:text-slate-400 mb-8">The certificate ID you entered is invalid or the certificate has been removed.</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{error === 'Certificate Not Found' ? 'Certificate Not Found' : 'Verification Failed'}</h2>
+          <p className="text-slate-500 dark:text-slate-400 mb-8">{error === 'Certificate Not Found' ? 'The certificate ID you entered is invalid or the certificate has been removed.' : error}</p>
           <Link to="/" className="text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium">Return Home</Link>
         </div>
       </div>
