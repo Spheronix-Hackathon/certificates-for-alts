@@ -37,7 +37,9 @@ app.use(cors({
       'http://localhost:5173',
       'http://localhost:3000',
       'https://certificate.spheronixtechnology.com',
-      'https://company-certificate-frontend.onrender.com'
+      'https://company-certificate-frontend.onrender.com',
+      'https://www.altscertificate.spheronixtechnology.com',
+      'https://altscertificate.spheronixtechnology.com'
     ];
     
     if (process.env.FRONTEND_URL) {
