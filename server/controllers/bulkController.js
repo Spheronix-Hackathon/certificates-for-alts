@@ -105,16 +105,18 @@ const validateBulkUpload = async (req, res) => {
         normalizedRow[cleanKey] = row[key];
       });
 
-      const studentName = normalizedRow['studentname'] || normalizedRow['name'] || normalizedRow['student'];
-      const regdNo = normalizedRow['regdno'] || normalizedRow['registrationno'] || normalizedRow['registrationnumber'] || normalizedRow['rollno'] || normalizedRow['id'];
-      const college = normalizedRow['collegename'] || normalizedRow['college'] || normalizedRow['university'] || normalizedRow['institution'] || '-';
-      const internshipType = normalizedRow['internshiptype'] || normalizedRow['type'] || 'Short-term';
-      const programName = normalizedRow['programname'] || normalizedRow['domain'] || normalizedRow['program'] || normalizedRow['course'];
+      const parseString = (val, defaultVal = '') => (val !== undefined && val !== null) ? String(val).trim() : defaultVal;
+
+      const studentName = parseString(normalizedRow['studentname'] || normalizedRow['name'] || normalizedRow['student']);
+      const regdNo = parseString(normalizedRow['regdno'] || normalizedRow['registrationno'] || normalizedRow['registrationnumber'] || normalizedRow['rollno'] || normalizedRow['id']);
+      const college = parseString(normalizedRow['collegename'] || normalizedRow['college'] || normalizedRow['university'] || normalizedRow['institution'], '-');
+      const internshipType = parseString(normalizedRow['internshiptype'] || normalizedRow['type'], 'Short-term');
+      const programName = parseString(normalizedRow['programname'] || normalizedRow['domain'] || normalizedRow['program'] || normalizedRow['course']);
       const startDate = normalizedRow['startdate'] || normalizedRow['joindate'] || normalizedRow['fromdate'] || normalizedRow['start'];
       const endDate = normalizedRow['enddate'] || normalizedRow['todate'] || normalizedRow['end'];
       const issueDate = normalizedRow['issuedate'] || normalizedRow['issue'];
-      const email = normalizedRow['email'] || normalizedRow['emailaddress'] || normalizedRow['emailid'];
-      const phone = normalizedRow['phone'] || normalizedRow['phonenumber'] || normalizedRow['mobile'] || normalizedRow['contact'];
+      const email = parseString(normalizedRow['email'] || normalizedRow['emailaddress'] || normalizedRow['emailid']);
+      const phone = parseString(normalizedRow['phone'] || normalizedRow['phonenumber'] || normalizedRow['mobile'] || normalizedRow['contact']);
 
       // Check required fields
       let status = 'Ready';

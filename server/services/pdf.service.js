@@ -55,7 +55,7 @@ const generatePDF = async (certificate, qrImagePath) => {
       doc.fillColor('black');
 
       // Helper function to safely get text
-      const getText = (val) => val || '';
+      const getText = (val) => (val !== undefined && val !== null) ? String(val) : '';
 
       // Helper to center mixed-font text precisely
       const drawCenteredLine = (segments, y, color = 'black') => {
