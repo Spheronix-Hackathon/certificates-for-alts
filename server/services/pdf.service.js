@@ -9,10 +9,18 @@ const formatDate = (dateString) => {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
 };
 
-const generatePDF = async (certificate, qrImagePath) => {
+const fileCache = {};
+const checkFileExists = (filePath) => {
+  if (fileCache[filePath] === undefined) {
+    fileCache[filePath] = fs.existsSync(filePath);
+  }
+  return fileCache[filePath];
+};
+
+const generatePDF = async (certificate, qrImagePath, targetDir) => {
   return new Promise(async (resolve, reject) => {
     try {
-      const pdfsDir = path.join(__dirname, '..', 'pdfs');
+      const pdfsDir = targetDir || path.join(__dirname, '..', 'pdfs');
       if (!fs.existsSync(pdfsDir)) {
         fs.mkdirSync(pdfsDir, { recursive: true });
       }
@@ -37,9 +45,9 @@ const generatePDF = async (certificate, qrImagePath) => {
       const fallbackTemplatePath = path.join(__dirname, '..', '2.png');
 
       let templateToUse = null;
-      if (fs.existsSync(localTemplatePath)) {
+      if (checkFileExists(localTemplatePath)) {
         templateToUse = localTemplatePath;
-      } else if (fs.existsSync(fallbackTemplatePath)) {
+      } else if (checkFileExists(fallbackTemplatePath)) {
         templateToUse = fallbackTemplatePath;
       }
 
@@ -104,23 +112,23 @@ const generatePDF = async (certificate, qrImagePath) => {
       doc.rect(550, 260, 160, 180).fill(); // Right certified stamp whiteout
 
       // Top Logos (Shifted down to Y=100)
-      if (fs.existsSync(apscheLogo)) {
+      if (checkFileExists(apscheLogo)) {
         doc.image(apscheLogo, 165, 100, { width: 100, height: 100 });
       }
-      if (fs.existsSync(govLogo)) {
+      if (checkFileExists(govLogo)) {
         doc.image(govLogo, 315, 100, { width: 100, height: 100 });
       }
-      if (fs.existsSync(companyLogo)) {
+      if (checkFileExists(companyLogo)) {
         doc.image(companyLogo, 450, 110, { width: 170 });
       }
 
       // Left Medal Logo (Shifted down and right)
-      if (fs.existsSync(medalLogo)) {
+      if (checkFileExists(medalLogo)) {
         doc.image(medalLogo, 50, 270, { width: 140 });
       }
 
       // Right Certified Logo (Shifted higher up)
-      if (fs.existsSync(certifiedLogo)) {
+      if (checkFileExists(certifiedLogo)) {
         doc.image(certifiedLogo, 580, 310, { width: 60 });
       }
 
@@ -199,10 +207,10 @@ const generatePDF = async (certificate, qrImagePath) => {
       ], 720);
 
       // 7. Bottom Logos (MSME & MCA)
-      if (fs.existsSync(msmeLogo)) {
+      if (checkFileExists(msmeLogo)) {
         doc.image(msmeLogo, 235, 750, { width: 110, height: 50 });
       }
-      if (fs.existsSync(mcaLogo)) {
+      if (checkFileExists(mcaLogo)) {
         doc.image(mcaLogo, 385, 750, { width: 110, height: 50 });
       }
 
@@ -214,7 +222,7 @@ const generatePDF = async (certificate, qrImagePath) => {
       // --- QR CODE PLACEMENT ---
       // Shifted left slightly to perfectly match the red marked box position
       const absoluteQrPath = path.join(__dirname, '..', qrImagePath);
-      if (fs.existsSync(absoluteQrPath)) {
+      if (checkFileExists(absoluteQrPath)) {
         doc.image(absoluteQrPath, 320, 815, { width: 70, height: 70 });
       }
 

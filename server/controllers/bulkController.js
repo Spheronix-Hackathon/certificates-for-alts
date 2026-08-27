@@ -205,8 +205,6 @@ const generateBulkCertificates = async (req, res) => {
       fs.mkdirSync(batchFolder, { recursive: true });
     }
 
-    const pdfsFolder = path.join(batchFolder, 'pdfs');
-    fs.mkdirSync(pdfsFolder);
 
     let generatedCount = 0;
     let failedCount = 0;
@@ -217,54 +215,56 @@ const generateBulkCertificates = async (req, res) => {
       errors.push({ ...r, failReason: r.error || 'Skipped in preview' });
     });
 
-    // 2. Loop through valid rows and generate
-    for (const row of validRows) {
-      try {
-        // Generate Unique ID
-        const certificateId = await generateCertificateId();
+    const chunkArray = (arr, size) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
+    const chunks = chunkArray(validRows, 20); // Process 20 certificates at a time
+    const certificatesToInsert = [];
 
-        const certificateData = {
-          certificateId,
-          studentName: row.studentName,
-          regdNo: row.regdNo,
-          college: row.college,
-          internshipType: row.internshipType,
-          programName: row.programName,
-          startDate: parseExcelDate(row.startDate),
-          endDate: parseExcelDate(row.endDate),
-          issuedDate: row.issueDate ? parseExcelDate(row.issueDate) : Date.now(),
-          email: row.email || '',
-          phone: row.phone || '',
-          status: 'Verified', // Bulk uploads might be automatically verified
-          createdBy: req.user._id
-        };
+    for (const chunk of chunks) {
+      const chunkPromises = chunk.map(async (row) => {
+        try {
+          const certificateId = await generateCertificateId();
+          const certificateData = {
+            certificateId,
+            studentName: row.studentName,
+            regdNo: row.regdNo,
+            college: row.college,
+            internshipType: row.internshipType,
+            programName: row.programName,
+            startDate: parseExcelDate(row.startDate),
+            endDate: parseExcelDate(row.endDate),
+            issuedDate: row.issueDate ? parseExcelDate(row.issueDate) : Date.now(),
+            email: row.email || '',
+            phone: row.phone || '',
+            status: 'Verified',
+            createdBy: req.user._id
+          };
 
-        const frontendUrl = process.env.FRONTEND_URL;
-        const verificationUrl = `${frontendUrl}/verify/${certificateId}`;
-        certificateData.verificationUrl = verificationUrl;
+          const frontendUrl = process.env.FRONTEND_URL;
+          const verificationUrl = `${frontendUrl}/verify/${certificateId}`;
+          certificateData.verificationUrl = verificationUrl;
 
-        // Generate QR
-        const qrPath = await generateQR(certificateId, verificationUrl);
-        certificateData.qrPath = qrPath;
+          const qrPath = await generateQR(certificateId, verificationUrl);
+          certificateData.qrPath = qrPath;
 
-        // Generate PDF
-        const generatedPdfPath = await generatePDF(certificateData, qrPath);
-        certificateData.pdfPath = generatedPdfPath;
+          const generatedPdfPath = await generatePDF(certificateData, qrPath);
+          certificateData.pdfPath = generatedPdfPath;
 
-        // Copy to batch folder
-        const sourcePdf = path.join(__dirname, '..', generatedPdfPath);
-        const targetPdf = path.join(pdfsFolder, `${certificateId}.pdf`);
-        fs.copyFileSync(sourcePdf, targetPdf);
+          certificatesToInsert.push(certificateData);
+          generatedCount++;
+        } catch (err) {
+          console.error(`Failed to generate for row ${row.rowNumber}:`, err);
+          failedCount++;
+          errors.push({ ...row, failReason: err.message });
+        }
+      });
+      
+      // Wait for the current chunk of 20 to finish before starting the next
+      await Promise.all(chunkPromises);
+    }
 
-        // Save to DB
-        await Certificate.create(certificateData);
-        generatedCount++;
-
-      } catch (err) {
-        console.error(`Failed to generate for row ${row.rowNumber}:`, err);
-        failedCount++;
-        errors.push({ ...row, failReason: err.message });
-      }
+    // 2.5 Batch save to database
+    if (certificatesToInsert.length > 0) {
+      await Certificate.insertMany(certificatesToInsert);
     }
 
     // 3. Create ZIP File
@@ -285,7 +285,12 @@ const generateBulkCertificates = async (req, res) => {
       archive.on('error', reject);
       
       archive.pipe(output);
-      archive.directory(pdfsFolder, false); // Add all PDFs in folder
+      
+      // Add generated PDFs directly to archive
+      certificatesToInsert.forEach(cert => {
+        const sourcePdf = path.join(__dirname, '..', cert.pdfPath);
+        archive.file(sourcePdf, { name: `${cert.certificateId}.pdf` });
+      });
       
       // Create Error Report CSV if needed
       if (errors.length > 0) {
