@@ -125,10 +125,36 @@ const deleteCertificate = async (req, res, next) => {
   }
 };
 
+// @desc    Bulk delete certificates permanently
+// @route   DELETE /api/certificates/bulk
+// @access  Private (Admin/HR)
+const bulkDeleteCertificates = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No certificate IDs provided' });
+    }
+
+    const result = await Certificate.deleteMany({ _id: { $in: ids } });
+
+    await ActivityLog.create({
+      user: req.user._id,
+      action: 'Bulk Deleted Certificates',
+      details: `Permanently deleted ${result.deletedCount} certificates.`
+    });
+
+    res.json({ success: true, message: `Successfully deleted ${result.deletedCount} certificates` });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   addCertificate,
   getCertificates,
   getCertificateById,
   revokeCertificate,
-  deleteCertificate
+  deleteCertificate,
+  bulkDeleteCertificates
 };

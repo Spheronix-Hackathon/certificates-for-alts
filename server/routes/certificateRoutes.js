@@ -13,7 +13,8 @@ const {
   getCertificates,
   getCertificateById,
   revokeCertificate,
-  deleteCertificate
+  deleteCertificate,
+  bulkDeleteCertificates
 } = require('../controllers/certificateController');
 
 const {
@@ -30,6 +31,7 @@ router.use(protect);
 router.get('/bulk/sample', authorize('Super Admin', 'HR Admin'), downloadSampleExcel);
 router.post('/bulk/upload', authorize('Super Admin', 'HR Admin'), upload.single('file'), validateBulkUpload);
 router.post('/bulk/generate', authorize('Super Admin', 'HR Admin'), generateBulkCertificates);
+router.delete('/bulk', authorize('Super Admin', 'HR Admin'), bulkDeleteCertificates);
 
 router.route('/')
   .post(authorize('Super Admin', 'HR Admin'), addCertificate)

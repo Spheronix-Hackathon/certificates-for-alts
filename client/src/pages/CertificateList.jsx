@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, FileText, XCircle, FileSpreadsheet } from 'lucide-react';
+import { Search, Plus, FileText, XCircle, FileSpreadsheet, Trash2 } from 'lucide-react';
 import api, { getBackendUrl } from '../services/api';
 import toast from 'react-hot-toast';
 import BulkUploadModal from '../components/BulkUploadModal';
@@ -10,6 +10,7 @@ export default function CertificateList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [selectedCerts, setSelectedCerts] = useState([]);
   
   // Pagination states
   const [page, setPage] = useState(1);
@@ -96,6 +97,41 @@ export default function CertificateList() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedCerts.length === 0) return;
+    if (window.confirm(`Are you sure you want to permanently delete ${selectedCerts.length} certificates?`)) {
+      const loadingToast = toast.loading('Deleting certificates...');
+      try {
+        await api.delete('/certificates/bulk', { data: { ids: selectedCerts } });
+        toast.success('Certificates deleted successfully');
+        setSelectedCerts([]);
+        fetchCertificates(1, false);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to delete certificates');
+      } finally {
+        toast.dismiss(loadingToast);
+      }
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allIds = certificates.map(c => c._id);
+      setSelectedCerts(Array.from(new Set([...selectedCerts, ...allIds])));
+    } else {
+      const visibleIds = certificates.map(c => c._id);
+      setSelectedCerts(selectedCerts.filter(id => !visibleIds.includes(id)));
+    }
+  };
+
+  const handleSelectOne = (e, id) => {
+    if (e.target.checked) {
+      setSelectedCerts([...selectedCerts, id]);
+    } else {
+      setSelectedCerts(selectedCerts.filter(certId => certId !== id));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -104,6 +140,14 @@ export default function CertificateList() {
           <p className="text-slate-500 dark:text-slate-400">Manage all generated internship certificates</p>
         </div>
         <div className="flex gap-3">
+          {selectedCerts.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 font-medium rounded-xl border border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors shadow-sm"
+            >
+              <Trash2 size={20} /> Delete Selected ({selectedCerts.length})
+            </button>
+          )}
           <button
             onClick={() => setIsBulkModalOpen(true)}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
@@ -137,6 +181,14 @@ export default function CertificateList() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="text-slate-500 dark:text-slate-400 text-sm">
+                <th className="sticky top-0 z-20 bg-slate-50 dark:bg-slate-900 px-6 py-4 border-b border-slate-200 dark:border-slate-700 shadow-sm before:content-[''] before:absolute before:bottom-0 before:left-0 before:right-0 before:border-b before:border-slate-200 dark:before:border-slate-700 w-12">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                    onChange={handleSelectAll}
+                    checked={certificates.length > 0 && certificates.every(c => selectedCerts.includes(c._id))}
+                  />
+                </th>
                 <th className="sticky top-0 z-20 bg-slate-50 dark:bg-slate-900 px-6 py-4 font-medium border-b border-slate-200 dark:border-slate-700 shadow-sm before:content-[''] before:absolute before:bottom-0 before:left-0 before:right-0 before:border-b before:border-slate-200 dark:before:border-slate-700">Certificate ID</th>
                 <th className="sticky top-0 z-20 bg-slate-50 dark:bg-slate-900 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider shadow-sm">Regd No</th>
                 <th className="sticky top-0 z-20 bg-slate-50 dark:bg-slate-900 px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider shadow-sm">College</th>
@@ -147,16 +199,24 @@ export default function CertificateList() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {loading && page === 1 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-8 text-slate-500">Loading certificates...</td>
+                  <td colSpan="6" className="text-center py-8 text-slate-500">Loading certificates...</td>
                 </tr>
               ) : certificates.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center py-8 text-slate-500">No certificates found.</td>
+                  <td colSpan="6" className="text-center py-8 text-slate-500">No certificates found.</td>
                 </tr>
               ) : (
                 <>
                   {certificates.map((cert) => (
                     <tr key={cert._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                          checked={selectedCerts.includes(cert._id)}
+                          onChange={(e) => handleSelectOne(e, cert._id)}
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <span className="font-mono text-sm font-medium text-slate-700 dark:text-slate-300">{cert.certificateId}</span>
                       </td>
@@ -179,7 +239,7 @@ export default function CertificateList() {
                   ))}
                   {loadingMore && (
                     <tr>
-                      <td colSpan="5" className="text-center py-4 text-slate-500 text-sm">Loading more...</td>
+                      <td colSpan="6" className="text-center py-4 text-slate-500 text-sm">Loading more...</td>
                     </tr>
                   )}
                 </>
